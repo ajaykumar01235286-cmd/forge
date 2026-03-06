@@ -8,7 +8,7 @@ export async function createIncident(db, data){
     return result[0]
 }
 export async function saveIncidentFile(db,data){
-    const result = await db.insert(incidentFiles)
+   try {const result = await db.insert(incidentFiles)
     .values({
         incidentId:data.incidentId,
         fileType: data.fileType,
@@ -16,4 +16,7 @@ export async function saveIncidentFile(db,data){
     })
     .returning();
     return result[0];
-}
+} catch (error) {
+    console.error("DATABASE ERROR:",error);
+    throw error;
+}}
