@@ -7,18 +7,25 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/mysql": "^5.0.2",
     "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
     "fastify": "^5.7.4",
     "fastify-swagger": "^5.1.1",
+    "pg": "^8.19.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.9",
     "nodemon": "^3.1.14"
   }
 }
