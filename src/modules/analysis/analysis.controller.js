@@ -1,32 +1,29 @@
-import { analyzeEvidence } from "./analysis.service.js"; 
-import { saveReport } from "../reports/reports.repository.js"; 
+// src/modules/analysis/analysis.controller.js
+import { Queue } from "bullmq";
+import IORedis from "ioredis";
+
+// Connect to Redis and instantiate the queue
+const connection = new IORedis({ maxRetriesPerRequest: null });
+const analysisQueue = new Queue("analysis-queue", { connection });
 
 export async function analyzeIncidentHandler(req, reply) {     
     try {         
         const { incidentId } = req.params;          
+        
+        // 1. Drop the job into the Redis Queue
+        const job = await analysisQueue.add("analyze-incident", { 
+            incidentId 
+        });
+        
+        // 2. Return instantly. The Worker handles the AI and Database now!
+        return reply.status(202).send({ 
+            success: true, 
+            message: "Analysis job queued successfully. The AI is processing it in the background.",
+            jobId: job.id
+        });
 
-        // 1. Rename the variable to 'aiAnalysis' for clarity
-        const aiAnalysis = await analyzeEvidence(req.server.db, incidentId);          
-
-        if (!aiAnalysis) {             
-            return reply.status(404).send({ error: "No evidence found for this incident" });         
-        }     
-
-        // 2. Save to the database using the parsed JSON fields from Gemini
-        const report = await saveReport(req.server.db, {
-            incidentId,
-            summary: aiAnalysis.rootCause,       // Extract the specific root cause string
-            hypotheses: aiAnalysis.hypotheses,   // Extract the array of hypotheses
-            modelUsed: "gemini-2.5-flash"
-        });      
-
-        // 3. Return the final saved report to the client
-        return {              
-            success: true,              
-            data: report          
-        };     
     } catch (error) {         
         req.log.error(error);         
-        return reply.status(500).send({ error: "Failed to analyze incident" });     
+        return reply.status(500).send({ error: "Failed to queue analysis job" });     
     } 
 }
