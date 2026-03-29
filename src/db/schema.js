@@ -23,14 +23,13 @@ export const incidentFiles = pgTable("incident_files", {
 export const evidence  = pgTable("evidence",{
     id: uuid("id").defaultRandom().primaryKey(),
     incidentId: uuid("incident_id").notNull(),
-    extractedData: jsonb("extracted_data"),
+    extractedData: text("extracted_data"),
     createdAt: timestamp("created_at").defaultNow()
 });
 export const reports = pgTable("reports", {
     id: uuid("id").defaultRandom().primaryKey(),
     incidentId: uuid("incident_id").notNull(),
-    summary: text("summary"),
-    hypotheses: jsonb("hypotheses"),
+   aiPayload: jsonb("ai_payload"),
     modelUsed: text("model_used"),
     createdAt: timestamp("created_at").defaultNow()
 });

@@ -26,8 +26,7 @@ const worker = new Worker(
    
     await saveReport(db, {
       incidentId,
-      summary: aiAnalysis.rootCause,
-      hypotheses: aiAnalysis.hypotheses,
+      analysis: aiAnalysis,
       modelUsed: "gemini-2.5-flash"
     });
 
