@@ -9,6 +9,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "db:generate": "drizzle-kit generate",
+    "worker": "node --env-file=.env src/workers/analysis.worker.js",
     "db:push": "drizzle-kit push"
   },
   "keywords": [],
