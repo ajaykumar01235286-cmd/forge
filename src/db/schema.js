@@ -31,12 +31,16 @@ export const reports = pgTable("reports", {
     id: uuid("id").defaultRandom().primaryKey(),
     incidentId: uuid("incident_id").notNull(),
     aiPayload: jsonb("ai_payload"),
+    scoredRunbook: jsonb("scored_runbook"),
+    escalationTier: text("escalation_tier"),
     modelUsed: text("model_used"),
     status: text("status").default("pending").notNull(),
     createdAt: timestamp("created_at").defaultNow()
-});export const causalGraphNodes = pgTable("causal_graph_nodes", {
+});
+export const causalGraphNodes = pgTable("causal_graph_nodes", {
     id: uuid("id").defaultRandom().primaryKey(),
-    componentName: text("component_name").notNull().unique(),
+    tenantId: text("tenant_id").default("default").notNull(),
+    componentName: text("component_name").notNull(),
     componentType: text("component_type").default("service"),
     firstSeenAt: timestamp("first_seen_at").defaultNow(),
     incidentCount: integer("incident_count").default(1).notNull()
@@ -44,6 +48,7 @@ export const reports = pgTable("reports", {
 
 export const causalGraphEdges = pgTable("causal_graph_edges", {
     id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: text("tenant_id").default("default").notNull(),
     fromNodeId: uuid("from_node_id").notNull().references(() => causalGraphNodes.id),
     toNodeId: uuid("to_node_id").notNull().references(() => causalGraphNodes.id),
     failureType: text("failure_type").default("cascade"),

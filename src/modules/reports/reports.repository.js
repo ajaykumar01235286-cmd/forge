@@ -29,3 +29,17 @@ export async function updateReportStatus(db, reportId, status, aiPayload = null)
         .returning();
     return result[0];
 }
+export async function saveScoredRunbook(db, reportId, scoredRunbook) {
+    const result = await db.update(reports)
+        .set({ scoredRunbook })
+        .where(eq(reports.id, reportId))
+        .returning();
+    return result[0];
+}
+export async function saveEscalationTier(db, reportId, tier) {
+    const result = await db.update(reports)
+        .set({ escalationTier: tier })
+        .where(eq(reports.id, reportId))
+        .returning();
+    return result[0];
+}

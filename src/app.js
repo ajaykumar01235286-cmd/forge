@@ -7,6 +7,7 @@ import analysisRoutes from "./modules/analysis/analysis.routes.js";
 import reportRoutes from "./modules/reports/report.routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
+import { graphRoutes } from "./modules/graph/graph.routes.js";
 
 export function buildApp(){
     const app = Fastify({
@@ -18,6 +19,7 @@ export function buildApp(){
     app.register(incidentRoutes, {prefix: "/incidents"});
     app.register(analysisRoutes);
     app.register(reportRoutes , {prefix: "/reports"});
+    app.register(graphRoutes);
     app.register(swagger, {
   openapi: {
     info: {
