@@ -216,10 +216,21 @@ async function callScorerWithRetry(model, prompt, maxRetries = 4) {
             const result = await model.generateContent(prompt);
             return result.response.text();
         } catch (error) {
-            const isOverloaded = error.message?.includes("503") || error.message?.includes("high demand");
-            if (!isOverloaded || attempt === maxRetries) throw error;
+            const msg = error.message ?? "";
+            const isRetryable =
+                msg.includes("503") ||
+                msg.includes("429") ||
+                msg.includes("high demand") ||
+                msg.includes("Too Many Requests") ||
+                msg.includes("fetch failed") ||
+                msg.includes("ECONNRESET") ||
+                msg.includes("ETIMEDOUT") ||
+                msg.includes("network");
+
+            if (!isRetryable || attempt === maxRetries) throw error;
+
             const waitMs = 5000 * attempt;
-            console.log(`[Scorer] Gemini 503 — attempt ${attempt}/${maxRetries}, retrying in ${waitMs / 1000}s...`);
+            console.log(`[Analysis] Transient error (${msg.slice(0, 40)}) — attempt ${attempt}/${maxRetries}, retrying in ${waitMs / 1000}s...`);
             await new Promise(r => setTimeout(r, waitMs));
         }
     }

@@ -34,7 +34,6 @@ export async function dispatchToSlack(incidentId, aiPayload, escalation) {
         ]
     };
 
-    // Add historical correlation if the graph found a pattern
     if (fp.historicalCorrelation && !fp.historicalCorrelation.startsWith("First occurrence")) {
         message.blocks.push({
             type: "section",

@@ -108,16 +108,20 @@ async function callWithRetry(model, prompt, maxRetries = 4) {
             const result = await model.generateContent(prompt);
             return result.response.text();
         } catch (error) {
-            const isOverloaded = error.message?.includes("503") || error.message?.includes("high demand");
-            const isLastAttempt = attempt === maxRetries;
+            const msg = error.message ?? "";
+            const isRetryable =
+                msg.includes("503") ||
+                msg.includes("high demand") ||
+                msg.includes("fetch failed") ||
+                msg.includes("ECONNRESET") ||
+                msg.includes("ETIMEDOUT") ||
+                msg.includes("network");
 
-            if (!isOverloaded || isLastAttempt) {
-                throw error;
-            }
+            if (!isRetryable || attempt === maxRetries) throw error;
 
             const waitMs = 5000 * attempt;
-            console.log(`[Analysis] Gemini 503 — attempt ${attempt}/${maxRetries}, retrying in ${waitMs / 1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            console.log(`[Analysis] Transient error (${msg.slice(0, 40)}) — attempt ${attempt}/${maxRetries}, retrying in ${waitMs / 1000}s...`);
+            await new Promise(r => setTimeout(r, waitMs));
         }
     }
 }
