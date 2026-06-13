@@ -1,18 +1,21 @@
-import { createIncidentHandler,uploadIncidentFileHandler } from "./incident.controller.js";
+import { createIncidentHandler, uploadIncidentFileHandler, listIncidentsHandler } from "./incident.controller.js";
 import { uploadEvidenceHandler } from "./evidence.controller.js";
-export default async function incidentRoutes(fastify){
-    fastify.post("/",{
-        schema:{
-            body:{
+
+export default async function incidentRoutes(fastify) {
+    fastify.get("/", listIncidentsHandler);   // ← new
+
+    fastify.post("/", {
+        schema: {
+            body: {
                 type: "object",
                 required: ["title"],
-                properties:{
-                    title:{type:"string"},
-                    description:{type:"string"}
+                properties: {
+                    title: { type: "string" },
+                    description: { type: "string" }
                 }
             }
         }
-    },createIncidentHandler);
-    // fastify.post("/:incidentId/files",uploadIncidentFileHandler);
+    }, createIncidentHandler);
+
     fastify.post("/:incidentId/files", uploadEvidenceHandler);
 }
