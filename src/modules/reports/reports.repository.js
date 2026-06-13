@@ -22,6 +22,7 @@ export async function createPendingReport(db, incidentId) {
 export async function updateReportStatus(db, reportId, status, aiPayload = null) {
     const updateData = { status };
     if (aiPayload) updateData.aiPayload = aiPayload;
+    if (status === "completed") updateData.modelUsed = "gemini-2.5-flash";
 
     const result = await db.update(reports)
         .set(updateData)
