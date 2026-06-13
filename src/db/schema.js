@@ -1,25 +1,38 @@
-import {pgTable,uuid,text,timestamp,jsonb, integer} from "drizzle-orm/pg-core";
-export const users = pgTable("users",{
-id: uuid("id").defaultRandom().primaryKey(),
-email: text("email").notNull().unique(),
-passwordHash: text("password_hash").notNull(),
-createAt: timestamp("created_at").defaultNow()
+import { pgTable, uuid, text, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
+
+export const organizations = pgTable("organizations", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").defaultNow()
 });
+
+export const users = pgTable("users", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    organizationId: uuid("organization_id"),  // which org they belong to
+    role: text("role").default("member"),     // "owner" | "member"
+    createAt: timestamp("created_at").defaultNow()
+});
+
 export const incidents = pgTable("incidents", {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id").notNull(),
+    tenantId: uuid("tenant_id"),  // the organization that owns this incident
     title: text("title").notNull(),
     description: text("description"),
     status: text("status").default("pending"),
     createdAt: timestamp("created_at").defaultNow()
 });
+
 export const incidentFiles = pgTable("incident_files", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  incidentId: uuid("incident_id").notNull(),
-  fileType: text("file_type").notNull(),
-  filePath: text("file_path").notNull(),
-  uploadedAt: timestamp("uploaded_at").defaultNow()
+    id: uuid("id").defaultRandom().primaryKey(),
+    incidentId: uuid("incident_id").notNull(),
+    fileType: text("file_type").notNull(),
+    filePath: text("file_path").notNull(),
+    uploadedAt: timestamp("uploaded_at").defaultNow()
 });
+
 export const evidence = pgTable("evidence", {
     id: uuid("id").defaultRandom().primaryKey(),
     incidentId: uuid("incident_id").notNull(),
@@ -27,6 +40,7 @@ export const evidence = pgTable("evidence", {
     sourceFile: text("source_file"),
     createdAt: timestamp("created_at").defaultNow()
 });
+
 export const reports = pgTable("reports", {
     id: uuid("id").defaultRandom().primaryKey(),
     incidentId: uuid("incident_id").notNull(),
@@ -37,6 +51,7 @@ export const reports = pgTable("reports", {
     status: text("status").default("pending").notNull(),
     createdAt: timestamp("created_at").defaultNow()
 });
+
 export const causalGraphNodes = pgTable("causal_graph_nodes", {
     id: uuid("id").defaultRandom().primaryKey(),
     tenantId: text("tenant_id").default("default").notNull(),

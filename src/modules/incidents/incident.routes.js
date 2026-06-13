@@ -2,9 +2,10 @@ import { createIncidentHandler, uploadIncidentFileHandler, listIncidentsHandler 
 import { uploadEvidenceHandler } from "./evidence.controller.js";
 
 export default async function incidentRoutes(fastify) {
-    fastify.get("/", listIncidentsHandler);   // ← new
+    fastify.get("/", { preHandler: [fastify.authenticate] }, listIncidentsHandler);
 
     fastify.post("/", {
+        preHandler: [fastify.authenticate],
         schema: {
             body: {
                 type: "object",
@@ -17,5 +18,5 @@ export default async function incidentRoutes(fastify) {
         }
     }, createIncidentHandler);
 
-    fastify.post("/:incidentId/files", uploadEvidenceHandler);
+    fastify.post("/:incidentId/files", { preHandler: [fastify.authenticate] }, uploadEvidenceHandler);
 }

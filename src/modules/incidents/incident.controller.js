@@ -5,13 +5,14 @@ import { extractEvidence } from "../evidence/evidence.service.js";
 import { saveEvidence } from "../evidence/evidence.repository.js";
 import { createIncident, saveIncidentFile } from "./incident.service.js";
 import { analysisQueue } from "../../queues/analysis.queue.js";
-import { desc } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 
 
 export async function createIncidentHandler(req, reply) {
     const { title, description } = req.body;
-    const userId = "00000000-0000-0000-0000-000000000001";
-    const incident = await createIncident(req.server.db, { title, description, userId });
+    const userId = req.user.id;                       // real logged-in user
+    const tenantId = req.user.organizationId;         // their org
+    const incident = await createIncident(req.server.db, { title, description, userId, tenantId });
     return { success: true, data: incident };
 }
 
@@ -30,24 +31,27 @@ export async function uploadIncidentFileHandler(req, reply) {
 
 export async function listIncidentsHandler(req, reply) {
     try {
+        const tenantId = req.user.organizationId;     // scope to caller's org
+
         const allIncidents = await req.server.db
             .select()
             .from(incidents)
+            .where(eq(incidents.tenantId, tenantId))
             .orderBy(desc(incidents.createdAt));
 
-        // fetch all reports once, then match in JS (simple + fine at this scale)
+        // fetch reports for THIS org's incidents only
+        const incidentIds = new Set(allIncidents.map(i => i.id));
         const allReports = await req.server.db.select().from(reports);
 
-        // map: incidentId -> most recent report
         const reportByIncident = {};
         for (const r of allReports) {
+            if (!incidentIds.has(r.incidentId)) continue;   // ignore other orgs' reports
             const existing = reportByIncident[r.incidentId];
             if (!existing || new Date(r.createdAt) > new Date(existing.createdAt)) {
                 reportByIncident[r.incidentId] = r;
             }
         }
 
-        // enrich each incident with its report's real severity / confidence / status
         const enriched = allIncidents.map((inc) => {
             const report = reportByIncident[inc.id];
             const ai = report?.aiPayload;

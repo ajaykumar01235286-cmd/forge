@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import { users } from "../../db/schema.js";
+import { users, organizations } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 
 const SALT_ROUNDS = 12;
@@ -17,10 +17,17 @@ export async function findUserByEmail(db, email) {
     return rows[0] ?? null;
 }
 
-export async function createUser(db, email, passwordHash) {
+export async function createOrganization(db, name) {
+    const rows = await db.insert(organizations).values({ name }).returning();
+    return rows[0];
+}
+
+export async function createUser(db, email, passwordHash, organizationId) {
     const rows = await db.insert(users).values({
         email: email.toLowerCase(),
         passwordHash,
+        organizationId,
+        role: "owner",
     }).returning();
     return rows[0];
 }

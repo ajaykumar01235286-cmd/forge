@@ -1,5 +1,4 @@
-import { hashPassword, verifyPassword, findUserByEmail, createUser } from "./auth.service.js";
-
+import { hashPassword, verifyPassword, findUserByEmail, createUser, createOrganization } from "./auth.service.js";
 const COOKIE_NAME = "forge_token";
 const cookieOpts = {
     httpOnly: true,
@@ -17,12 +16,16 @@ export async function signupHandler(req, reply) {
     const existing = await findUserByEmail(req.server.db, email);
     if (existing) return reply.status(409).send({ error: "An account with that email already exists" });
 
-    const passwordHash = await hashPassword(password);
-    const user = await createUser(req.server.db, email, passwordHash);
+    // create the user's organization (they become its owner)
+    const orgName = `${email.split("@")[0]}'s Workspace`;
+    const org = await createOrganization(req.server.db, orgName);
 
-    const token = req.server.jwt.sign({ id: user.id, email: user.email });
+    const passwordHash = await hashPassword(password);
+    const user = await createUser(req.server.db, email, passwordHash, org.id);
+
+    const token = req.server.jwt.sign({ id: user.id, email: user.email, organizationId: org.id });
     reply.setCookie(COOKIE_NAME, token, cookieOpts);
-    return reply.status(201).send({ success: true, user: { id: user.id, email: user.email } });
+    return reply.status(201).send({ success: true, user: { id: user.id, email: user.email, organizationId: org.id } });
 }
 
 export async function loginHandler(req, reply) {
@@ -35,11 +38,10 @@ export async function loginHandler(req, reply) {
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) return reply.status(401).send({ error: "Invalid email or password" });
 
-    const token = req.server.jwt.sign({ id: user.id, email: user.email });
+    const token = req.server.jwt.sign({ id: user.id, email: user.email, organizationId: user.organizationId });
     reply.setCookie(COOKIE_NAME, token, cookieOpts);
-    return reply.send({ success: true, user: { id: user.id, email: user.email } });
+    return reply.send({ success: true, user: { id: user.id, email: user.email, organizationId: user.organizationId } });
 }
-
 export async function meHandler(req, reply) {
     // protected — req.user is set by the auth hook
     return reply.send({ success: true, user: req.user });
