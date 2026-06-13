@@ -1,6 +1,7 @@
-
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import websocket from "@fastify/websocket";
 import dbPlugin from "./plugins/db.js";
@@ -10,6 +11,7 @@ import analysisRoutes from "./modules/analysis/analysis.routes.js";
 import reportRoutes from "./modules/reports/report.routes.js";
 import { graphRoutes } from "./modules/graph/graph.routes.js";
 import realtimeRoutes from "./modules/realtime/realtime.routes.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
@@ -17,15 +19,37 @@ export function buildApp() {
     const app = Fastify({
         logger: true
     });
+
     app.register(cors, {
         origin: "http://localhost:3000",
         credentials: true
     });
     app.register(multipart);
+
+    // ---- auth infrastructure (must register before routes) ----
+    app.register(cookie);
+    app.register(jwt, {
+        secret: process.env.JWT_SECRET,
+        cookie: {
+            cookieName: "forge_token",
+            signed: false
+        }
+    });
+
     app.register(dbPlugin);
     app.register(websocket);
 
+    // ---- authenticate decorator: verifies token from cookie, sets req.user ----
+    app.decorate("authenticate", async function (req, reply) {
+        try {
+            await req.jwtVerify();
+        } catch (err) {
+            return reply.status(401).send({ error: "Unauthorized" });
+        }
+    });
+
     app.register(healthRoute);
+    app.register(authRoutes, { prefix: "/auth" });
     app.register(incidentRoutes, { prefix: "/incidents" });
     app.register(analysisRoutes);
     app.register(reportRoutes, { prefix: "/reports" });
