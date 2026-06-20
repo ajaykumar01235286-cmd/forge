@@ -10,77 +10,76 @@ import { decideEscalation } from "../modules/analysis/escalationRouter.js";
 import { dispatchToSlack } from "../modules/notifications/slackDispatcher.js";
 import { publishEvent } from "../events/publisher.js";
 
-const connection = new IORedis({ maxRetriesPerRequest: null });
-
+const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", { maxRetriesPerRequest: null });
 const worker = new Worker(
     "analysis-queue",
-   async (job) => {
-    const { incidentId, reportId } = job.data;
-    console.log(`[Worker] Job started — incident: ${incidentId}, report: ${reportId}`);
+    async (job) => {
+        const { incidentId, reportId } = job.data;
+        console.log(`[Worker] Job started — incident: ${incidentId}, report: ${reportId}`);
 
-    // 1. Processing
-    await updateReportStatus(db, reportId, "processing");
-    await publishEvent(incidentId, { type: "status", status: "processing", reportId });
+        // 1. Processing
+        await updateReportStatus(db, reportId, "processing");
+        await publishEvent(incidentId, { type: "status", status: "processing", reportId });
 
-    // 2. Run AI analysis
-    const aiAnalysis = await analyzeEvidence(db, incidentId);
-    if (!aiAnalysis) {
-        throw new Error(`No evidence found for incident ${incidentId}`);
-    }
-
-    // 3. Completed + RCA ready
-    await updateReportStatus(db, reportId, "completed", aiAnalysis);
-    await publishEvent(incidentId, { type: "status", status: "completed", reportId });
-    await publishEvent(incidentId, {
-        type: "rca-ready",
-        reportId,
-        primaryComponent: aiAnalysis?.incidentFingerprint?.primaryFailingComponent,
-        severity: aiAnalysis?.incidentFingerprint?.severityLevel
-    });
-
-    // 4. Graph updated
-    await writeToGraph(db, incidentId, aiAnalysis);
-    await publishEvent(incidentId, { type: "graph-updated", reportId });
-
-    // 5. Scoring
-    try {
-        const scored = await scoreRunbook(aiAnalysis);
-        if (scored) {
-            await saveScoredRunbook(db, reportId, scored);
-            console.log(`[Scorer] Ranked ${scored.scoredSteps.length} step(s) — first action: ${scored.recommendedFirstAction}`);
-            await publishEvent(incidentId, {
-                type: "scoring-done",
-                reportId,
-                recommendedFirstAction: scored.recommendedFirstAction,
-                stepCount: scored.scoredSteps.length
-            });
+        // 2. Run AI analysis
+        const aiAnalysis = await analyzeEvidence(db, incidentId);
+        if (!aiAnalysis) {
+            throw new Error(`No evidence found for incident ${incidentId}`);
         }
-    } catch (err) {
-        console.error("[Scorer] Scoring failed silently:", err.message);
-    }
 
-    // 6. Escalation
-    try {
-        const escalation = decideEscalation(aiAnalysis);
-        await saveEscalationTier(db, reportId, escalation.tier);
-        console.log(`[Escalation] ${escalation.tier.toUpperCase()} (score ${escalation.score})`);
+        // 3. Completed + RCA ready
+        await updateReportStatus(db, reportId, "completed", aiAnalysis);
+        await publishEvent(incidentId, { type: "status", status: "completed", reportId });
         await publishEvent(incidentId, {
-            type: "escalation",
+            type: "rca-ready",
             reportId,
-            tier: escalation.tier,
-            score: escalation.score
+            primaryComponent: aiAnalysis?.incidentFingerprint?.primaryFailingComponent,
+            severity: aiAnalysis?.incidentFingerprint?.severityLevel
         });
 
-        if (escalation.tier === "auto-resolve") {
-            await dispatchToSlack(incidentId, aiAnalysis, escalation);
-            await publishEvent(incidentId, { type: "slack-dispatched", reportId });
-        }
-    } catch (err) {
-        console.error("[Escalation] Failed silently:", err.message);
-    }
+        // 4. Graph updated
+        await writeToGraph(db, incidentId, aiAnalysis);
+        await publishEvent(incidentId, { type: "graph-updated", reportId });
 
-    console.log(`[Worker] Completed — report: ${reportId}`);
-},
+        // 5. Scoring
+        try {
+            const scored = await scoreRunbook(aiAnalysis);
+            if (scored) {
+                await saveScoredRunbook(db, reportId, scored);
+                console.log(`[Scorer] Ranked ${scored.scoredSteps.length} step(s) — first action: ${scored.recommendedFirstAction}`);
+                await publishEvent(incidentId, {
+                    type: "scoring-done",
+                    reportId,
+                    recommendedFirstAction: scored.recommendedFirstAction,
+                    stepCount: scored.scoredSteps.length
+                });
+            }
+        } catch (err) {
+            console.error("[Scorer] Scoring failed silently:", err.message);
+        }
+
+        // 6. Escalation
+        try {
+            const escalation = decideEscalation(aiAnalysis);
+            await saveEscalationTier(db, reportId, escalation.tier);
+            console.log(`[Escalation] ${escalation.tier.toUpperCase()} (score ${escalation.score})`);
+            await publishEvent(incidentId, {
+                type: "escalation",
+                reportId,
+                tier: escalation.tier,
+                score: escalation.score
+            });
+
+            if (escalation.tier === "auto-resolve") {
+                await dispatchToSlack(incidentId, aiAnalysis, escalation);
+                await publishEvent(incidentId, { type: "slack-dispatched", reportId });
+            }
+        } catch (err) {
+            console.error("[Escalation] Failed silently:", err.message);
+        }
+
+        console.log(`[Worker] Completed — report: ${reportId}`);
+    },
     {
         connection,
         attempts: 3,

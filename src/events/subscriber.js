@@ -5,8 +5,7 @@ import IORedis from "ioredis";
 const rooms = new Map();
 
 // Dedicated subscriber connection (pub/sub mode can't share).
-const subscriber = new IORedis({ maxRetriesPerRequest: null });
-
+const subscriber = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", { maxRetriesPerRequest: null });
 // Subscribe to ALL incident channels using a pattern.
 // psubscribe matches `incident:*` — every incident's channel at once.
 subscriber.psubscribe("incident:*", (err) => {
