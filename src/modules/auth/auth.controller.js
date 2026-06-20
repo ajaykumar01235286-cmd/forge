@@ -3,14 +3,14 @@ import {
     generateResetToken, createResetToken, findValidResetToken, markTokenUsed, updateUserPassword
 } from "./auth.service.js";
 const COOKIE_NAME = "forge_token";
+const isProd = process.env.NODE_ENV === "production";
 const cookieOpts = {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production", // https only in prod
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
 };
-
 export async function signupHandler(req, reply) {
     const { email, password } = req.body ?? {};
     if (!email || !password) return reply.status(400).send({ error: "Email and password required" });
