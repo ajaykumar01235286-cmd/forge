@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, integer, boolean } from "drizzle-orm/pg-core";
 
 export const organizations = pgTable("organizations", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -13,6 +13,14 @@ export const users = pgTable("users", {
     organizationId: uuid("organization_id"),  // which org they belong to
     role: text("role").default("member"),     // "owner" | "member"
     createAt: timestamp("created_at").defaultNow()
+});
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    used: boolean("used").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow()
 });
 
 export const incidents = pgTable("incidents", {

@@ -1,4 +1,7 @@
-import { hashPassword, verifyPassword, findUserByEmail, createUser, createOrganization } from "./auth.service.js";
+import {
+    hashPassword, verifyPassword, findUserByEmail, createUser, createOrganization,
+    generateResetToken, createResetToken, findValidResetToken, markTokenUsed, updateUserPassword
+} from "./auth.service.js";
 const COOKIE_NAME = "forge_token";
 const cookieOpts = {
     httpOnly: true,
@@ -50,4 +53,44 @@ export async function meHandler(req, reply) {
 export async function logoutHandler(req, reply) {
     reply.clearCookie(COOKIE_NAME, { path: "/" });
     return reply.send({ success: true });
+}
+const FRONTEND_URL = "http://localhost:3000";
+
+export async function forgotPasswordHandler(req, reply) {
+    const { email } = req.body ?? {};
+    if (!email) return reply.status(400).send({ error: "Email required" });
+
+    const user = await findUserByEmail(req.server.db, email);
+
+    // SECURITY: always return the same response whether or not the user exists.
+    // Never reveal which emails are registered.
+    if (user) {
+        const token = generateResetToken();
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await createResetToken(req.server.db, user.id, token, expiresAt);
+
+        const resetLink = `${FRONTEND_URL}/reset-password/${token}`;
+        // DEV: log the link. (Swap for real email via Resend later.)
+        req.log.info(`[PASSWORD RESET] Link for ${user.email}: ${resetLink}`);
+        console.log(`\n🔑 PASSWORD RESET LINK for ${user.email}:\n${resetLink}\n`);
+    }
+
+    return reply.send({ success: true, message: "If an account exists for that email, a reset link has been sent." });
+}
+
+export async function resetPasswordHandler(req, reply) {
+    const { token, password } = req.body ?? {};
+    if (!token || !password) return reply.status(400).send({ error: "Token and new password required" });
+    if (password.length < 8) return reply.status(400).send({ error: "Password must be at least 8 characters" });
+
+    const resetToken = await findValidResetToken(req.server.db, token);
+    if (!resetToken) {
+        return reply.status(400).send({ error: "This reset link is invalid or has expired." });
+    }
+
+    const passwordHash = await hashPassword(password);
+    await updateUserPassword(req.server.db, resetToken.userId, passwordHash);
+    await markTokenUsed(req.server.db, resetToken.id);
+
+    return reply.send({ success: true, message: "Password updated. You can now sign in." });
 }
