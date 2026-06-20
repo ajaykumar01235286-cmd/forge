@@ -1,3 +1,11 @@
 node_modules
 .env
-uploads
+uploads*.txt
+cookies.txt
+
+# curl cookie jars
+c.txt
+cookies.txt
+test.txt
+rb.txt
+*.cookies
