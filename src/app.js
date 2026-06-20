@@ -12,6 +12,7 @@ import reportRoutes from "./modules/reports/report.routes.js";
 import { graphRoutes } from "./modules/graph/graph.routes.js";
 import realtimeRoutes from "./modules/realtime/realtime.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import { runbookRoutes } from "./modules/runbooks/runbook.routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
@@ -21,9 +22,9 @@ export function buildApp() {
     });
 
     app.register(cors, {
-        origin: "http://localhost:3000",
-        credentials: true
-    });
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true
+});
     app.register(multipart);
 
     // ---- auth infrastructure (must register before routes) ----
@@ -55,6 +56,7 @@ export function buildApp() {
     app.register(reportRoutes, { prefix: "/reports" });
     app.register(graphRoutes);
     app.register(realtimeRoutes);
+    app.register(runbookRoutes);
 
     app.register(swagger, {
         openapi: {
