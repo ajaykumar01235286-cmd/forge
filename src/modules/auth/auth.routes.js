@@ -4,10 +4,13 @@ import {
 } from "./auth.controller.js";
 
 export default async function authRoutes(fastify) {
-    fastify.post("/signup", signupHandler);
-    fastify.post("/login", loginHandler);
+    // tighter rate limit on the brute-force targets
+    const authLimit = { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } };
+
+    fastify.post("/signup", authLimit, signupHandler);
+    fastify.post("/login", authLimit, loginHandler);
     fastify.post("/logout", logoutHandler);
-    fastify.post("/forgot-password", forgotPasswordHandler);
-    fastify.post("/reset-password", resetPasswordHandler);
+    fastify.post("/forgot-password", authLimit, forgotPasswordHandler);
+    fastify.post("/reset-password", authLimit, resetPasswordHandler);
     fastify.get("/me", { preHandler: [fastify.authenticate] }, meHandler);
 }
